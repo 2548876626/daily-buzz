@@ -12,18 +12,28 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     
     <style>
-        :root { --bg-color: #000000; --text-primary: #ffffff; --text-secondary: #8e8e93; --accent-color: #0a84ff; --separator: #38383a; --zhihu-color: #0084ff; --weibo-color: #ff3b30; }
+        :root { --bg-color: #000000; --text-primary: #ffffff; --text-secondary: #8e8e93; --accent-color: #0a84ff; --separator: #38383a; }
         body { background-color: var(--bg-color); color: var(--text-primary); font-family: -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
-        /* 顶部导航 */
         .top-bar { position: sticky; top: 0; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px); padding: 45px 16px 10px 16px; z-index: 50; border-bottom: 0.5px solid var(--separator); display: flex; justify-content: space-between; align-items: flex-end; }
         .app-title { font-size: 30px; font-weight: 800; letter-spacing: -1px; }
         .app-date { font-size: 13px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; text-transform: uppercase; }
 
-        /* 内容区 */
         .content-area { padding: 0 16px 100px 16px; min-height: 100vh; }
         .news-item { padding: 18px 0; border-bottom: 0.5px solid var(--separator); display: flex; flex-direction: column; gap: 8px; }
-        .news-title { font-size: 17px; font-weight: 600; line-height: 1.5; color: var(--text-primary); text-decoration: none; }
+        
+        /* 标题样式：确保是块级元素，增加点击区域 */
+        .news-title { 
+            display: block; 
+            font-size: 17px; 
+            font-weight: 600; 
+            line-height: 1.5; 
+            color: var(--text-primary); 
+            text-decoration: none; 
+        }
+        /* 点击态反馈 */
+        .news-title:active { opacity: 0.7; }
+
         .news-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #636366; }
         
         .rank-tag { font-weight: 800; font-size: 14px; margin-right: 10px; font-style: italic; display: inline-block; width: 20px; }
@@ -36,7 +46,6 @@
         .highlight { color: var(--accent-color); }
         .loading { text-align: center; color: var(--text-secondary); margin-top: 60px; font-size: 14px; }
         
-        /* 底部按钮 */
         .bottom-nav { position: fixed; bottom: 30px; left: 20px; right: 20px; height: 64px; background-color: rgba(28, 28, 30, 0.9); backdrop-filter: blur(25px); border-radius: 32px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; border: 0.5px solid rgba(255,255,255,0.1); }
         .nav-item { background: none; border: none; color: var(--text-secondary); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 50px; }
         .nav-item.active { color: #fff; transform: scale(1.1); transition: all 0.2s; }
@@ -52,19 +61,18 @@
     </div>
 
     <div class="content-area">
-        <div v-if="loading" class="loading">正在从云端获取 {{ pageTitle }}...</div>
-        
-        <div v-if="errorMsg" class="loading" style="color: #ff453a;">
-            ⚠️ {{ errorMsg }}
-        </div>
+        <div v-if="loading" class="loading">正在获取 {{ pageTitle }}...</div>
+        <div v-if="errorMsg" class="loading" style="color: #ff453a;">⚠️ {{ errorMsg }}</div>
 
         <div v-for="(item, index) in displayList" :key="index" class="news-item">
             <div style="display: flex; align-items: start;">
                 <span v-if="currentTab !== 'fav'" class="rank-tag" :class="getRankClass(index)">{{ index + 1 }}</span>
-                <a :href="item.link" target="_blank" class="news-title" :class="{ 'highlight': isSpecialInterest(item.title) }">
+                
+                <a :href="item.url" target="_blank" class="news-title" :class="{ 'highlight': isSpecialInterest(item.title) }">
                     {{ item.title }}
                 </a>
             </div>
+            
             <div class="news-meta">
                 <span>
                     <span v-if="currentTab === 'weibo'" class="source-tag tag-weibo">微博</span>
@@ -96,7 +104,7 @@
 
     createApp({
         setup() {
-            // ⚠️⚠️⚠️ 这里一定要填对你的 Worker 链接 ⚠️⚠️⚠️
+            // ⚠️ 再次确认你的链接
             const WORKER_URL = 'https://daily-buzz-api.jacket1763.workers.dev'; 
 
             const currentTab = ref('weibo');
@@ -113,15 +121,11 @@
                 return 'Favorites';
             });
 
-            // 通用获取函数
             const fetchData = async (type) => {
                 loading.value = true;
                 errorMsg.value = '';
                 try {
-                    // 请求 Worker，带上参数 ?type=weibo 或 ?type=zhihu
                     const res = await fetch(`${WORKER_URL}?type=${type}`);
-                    
-                    // 先判断网络状态
                     if (!res.ok) throw new Error(`连接失败 (${res.status})`);
                     
                     const json = await res.json();
@@ -129,15 +133,12 @@
                     if (json.success) {
                         const items = json.data;
                         const filtered = filterNews(items);
-                        
                         if (type === 'weibo') weiboData.value = filtered;
                         if (type === 'zhihu') zhihuData.value = filtered;
                     } else {
-                        // 如果后端返回了错误信息
                         throw new Error(json.error || '数据格式错误');
                     }
                 } catch (e) {
-                    console.error(e);
                     errorMsg.value = e.message;
                 } finally {
                     loading.value = false;
@@ -164,17 +165,20 @@
             onMounted(() => {
                 const saved = localStorage.getItem('mybuzz_favs');
                 if (saved) favorites.value = JSON.parse(saved);
-                fetchData('weibo'); // 默认加载微博
+                fetchData('weibo');
             });
 
             const getRankClass = (i) => i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
             const isSpecialInterest = (t) => ['花样滑冰', '羽生'].some(k => t.includes(k));
             const isFavorited = (i) => favorites.value.some(f => f.title === i.title);
+            
+            // 修复收藏功能里的链接字段
             const toggleFav = (i) => {
                 if(isFavorited(i)) favorites.value = favorites.value.filter(f=>f.title!==i.title);
                 else favorites.value.unshift(i);
                 localStorage.setItem('mybuzz_favs', JSON.stringify(favorites.value));
             };
+
             const displayList = computed(() => {
                 if(currentTab.value === 'weibo') return weiboData.value;
                 if(currentTab.value === 'zhihu') return zhihuData.value;
