@@ -3,157 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>今日热点</title>
+    <title>Buzz 2.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        /* --- Apple 备忘录风格深色主题 --- */
+        /* --- 保持 Apple 备忘录深色风格不变 --- */
         :root {
             --bg-color: #000000;
-            --card-bg: #1c1c1e;
             --text-primary: #ffffff;
             --text-secondary: #8e8e93;
-            --accent-color: #0a84ff; /* 苹果蓝 */
+            --accent-color: #0a84ff; 
             --separator: #38383a;
-            --danger: #ff453a;
         }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* 顶部导航栏 */
-        .header {
-            position: sticky;
-            top: 0;
-            background-color: rgba(28, 28, 30, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 15px 10px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            z-index: 100;
-            border-bottom: 0.5px solid var(--separator);
-        }
-
-        .tab-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 16px;
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: 20px;
-            transition: all 0.3s;
-        }
-
-        .tab-btn.active {
-            color: var(--text-primary);
-            background-color: #3a3a3c;
-        }
-
-        /* 列表区域 */
-        .content-area {
-            padding: 10px 16px;
-            padding-bottom: 80px; /* 给底部留空间 */
-        }
-
-        .news-item {
-            padding: 16px 0;
-            border-bottom: 0.5px solid var(--separator);
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .news-title {
-            font-size: 17px;
-            font-weight: 600;
-            line-height: 1.4;
-            color: var(--text-primary);
-            text-decoration: none;
-        }
-
-        .news-summary {
-            font-size: 14px;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 2; /* 最多显示2行 */
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .news-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 4px;
-            font-size: 12px;
-            color: #636366;
-        }
-
-        /* 收藏按钮样式 */
-        .fav-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 18px;
-            cursor: pointer;
-        }
-        .fav-btn.is-fav {
-            color: #ffcc00; /* 收藏后的黄色 */
-        }
-
-        /* 特殊高亮 (花滑) */
-        .highlight {
-            color: var(--accent-color);
-        }
+        body { background-color: var(--bg-color); color: var(--text-primary); font-family: -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
-        /* 空状态提示 */
-        .empty-state {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-top: 50px;
-        }
+        .header { position: sticky; top: 0; background-color: rgba(28, 28, 30, 0.95); backdrop-filter: blur(20px); padding: 15px 10px; display: flex; justify-content: center; gap: 15px; z-index: 100; border-bottom: 0.5px solid var(--separator); }
+        .tab-btn { background: none; border: none; color: var(--text-secondary); font-size: 15px; font-weight: 600; padding: 6px 14px; border-radius: 18px; transition: all 0.3s; }
+        .tab-btn.active { color: var(--text-primary); background-color: #3a3a3c; }
+        
+        .content-area { padding: 0 16px 80px 16px; }
+        .news-item { padding: 16px 0; border-bottom: 0.5px solid var(--separator); display: flex; flex-direction: column; gap: 6px; }
+        .news-title { font-size: 17px; font-weight: 600; line-height: 1.4; color: var(--text-primary); text-decoration: none; }
+        .news-summary { font-size: 14px; color: var(--text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .news-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: #636366; }
+        .fav-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; }
+        .fav-btn.is-fav { color: #ffcc00; }
+        .highlight { color: var(--accent-color); }
+        .loading { text-align: center; color: var(--text-secondary); margin-top: 30px; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div id="app">
     <div class="header">
-        <button class="tab-btn" :class="{ active: currentTab === 'domestic' }" @click="currentTab = 'domestic'">国内热点</button>
-        <button class="tab-btn" :class="{ active: currentTab === 'world' }" @click="currentTab = 'world'">全球大事</button>
+        <button class="tab-btn" :class="{ active: currentTab === 'domestic' }" @click="switchTab('domestic')">国内资讯</button>
+        <button class="tab-btn" :class="{ active: currentTab === 'world' }" @click="switchTab('world')">全球大事</button>
         <button class="tab-btn" :class="{ active: currentTab === 'fav' }" @click="currentTab = 'fav'">收藏夹</button>
     </div>
 
     <div class="content-area">
-        
-        <div v-if="currentTab === 'fav' && favorites.length === 0" class="empty-state">
-            <p>还没有收藏任何内容</p>
+        <div v-if="loading" class="loading">正在获取最新热点...</div>
+
+        <div v-if="currentTab === 'fav' && favorites.length === 0" class="loading">
+            暂无收藏，去发现点什么吧
         </div>
 
         <div v-for="(item, index) in displayList" :key="index" class="news-item">
             <a :href="item.link" target="_blank" class="news-title" :class="{ 'highlight': isSpecialInterest(item.title) }">
                 {{ item.title }}
             </a>
-            
-            <div class="news-summary" v-if="item.desc">
-                {{ item.desc }}
-            </div>
-
+            <div class="news-summary" v-if="item.desc">{{ cleanSummary(item.desc) }}</div>
             <div class="news-meta">
-                <span>{{ item.source }}</span>
+                <span>{{ item.source }} | {{ formatTime(item.pubDate) }}</span>
                 <button class="fav-btn" :class="{ 'is-fav': isFavorited(item) }" @click="toggleFav(item)">
-                    {{ isFavorited(item) ? '★ 已收藏' : '☆ 收藏' }}
+                    {{ isFavorited(item) ? '★' : '☆' }}
                 </button>
             </div>
         </div>
-
     </div>
 </div>
 
@@ -162,76 +67,104 @@
 
     createApp({
         setup() {
-            const currentTab = ref('domestic'); // 当前标签: domestic, world, fav
-            const favorites = ref([]); // 收藏夹数据
+            const currentTab = ref('domestic');
+            const favorites = ref([]);
+            const domesticNews = ref([]);
+            const worldNews = ref([]);
+            const loading = ref(false);
 
-            // 模拟数据 (这里目前是假的，下一步我们换成真的)
-            const domesticNews = ref([
-                { title: '羽生结弦即将开启新的冰演巡回', desc: '花样滑冰传奇人物宣布了最新的巡演计划，首站定于东京。', link: '#', source: '微博热搜' },
-                { title: '某地发现一种新的古代文物', desc: '考古学家在挖掘现场有了惊人发现，可能改写历史。', link: '#', source: '百度贴吧' },
-                { title: '国内油价即将在今晚调整', desc: '受国际原油价格影响，预计每升下调0.1元。', link: '#', source: '今日头条' },
-                // 下面是一个会被过滤的例子（模拟代码里暂时不展示过滤逻辑，等接真数据再加）
-                { title: '某某明星恋情曝光', desc: '八卦记者拍到了两人共同进出的画面。', link: '#', source: '微博' }
-            ]);
+            // ⚠️ 核心：这里是获取真实数据的逻辑
+            // 使用 rss2json 服务把 RSS 转换成 JSON
+            const fetchRSS = async (rssUrl, targetRef, sourceName) => {
+                try {
+                    loading.value = true;
+                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+                    const res = await fetch(apiUrl);
+                    const data = await res.json();
+                    
+                    if (data.status === 'ok') {
+                        // 拿到数据后，进行“清洗”和“过滤”
+                        const rawItems = data.items.map(item => ({
+                            title: item.title,
+                            link: item.link,
+                            desc: item.description,
+                            pubDate: item.pubDate,
+                            source: sourceName
+                        }));
+                        targetRef.value = filterNews(rawItems);
+                    }
+                } catch (e) {
+                    console.error("加载失败", e);
+                } finally {
+                    loading.value = false;
+                }
+            };
 
-            const worldNews = ref([
-                { title: 'SpaceX 成功发射新一代星舰', desc: '此次发射标志着人类火星移民计划迈出了重要一步。', link: '#', source: 'SpaceX' },
-                { title: '全球气候峰会达成新协议', desc: '各国领导人承诺在2030年前减少碳排放。', link: '#', source: '联合早报' }
-            ]);
+            // 🚫 黑名单：即使是热点，有这些词也不看
+            const blackList = ['绯闻', '恋情', '出轨', '粉丝', '应援', '剧透', '生图', '路透', '穿搭'];
+            // ✅ 白名单：即便触发黑名单，也要强制看
+            const whiteList = ['花样滑冰', '羽生', '冰演', '冬奥', '金博洋'];
 
-            // 从本地读取收藏
+            // 过滤逻辑
+            const filterNews = (items) => {
+                return items.filter(item => {
+                    const t = item.title;
+                    // 如果中白名单，直接通过
+                    if (whiteList.some(k => t.includes(k))) return true;
+                    // 如果中黑名单，过滤掉
+                    if (blackList.some(k => t.includes(k))) return false;
+                    return true;
+                });
+            };
+
+            // 初始加载
             onMounted(() => {
                 const saved = localStorage.getItem('mybuzz_favs');
-                if (saved) {
-                    favorites.value = JSON.parse(saved);
-                }
+                if (saved) favorites.value = JSON.parse(saved);
+                
+                // 加载国内 (暂用 36Kr)
+                fetchRSS('https://36kr.com/feed', domesticNews, '36氪');
+                // 加载国际 (联合早报)
+                fetchRSS('https://www.zaobao.com.sg/rss/world.xml', worldNews, '联合早报');
             });
 
-            // 判断是否是你的兴趣点 (花滑)
-            const isSpecialInterest = (title) => {
-                const keywords = ['花样滑冰', '羽生', '冰演', '滑冰'];
-                return keywords.some(k => title.includes(k));
+            const switchTab = (tab) => {
+                currentTab.value = tab;
             };
 
-            // 判断是否已收藏
-            const isFavorited = (item) => {
-                return favorites.value.some(fav => fav.title === item.title);
+            // 工具：去除摘要里的 HTML 标签
+            const cleanSummary = (html) => {
+                if(!html) return '';
+                let temp = document.createElement("div");
+                temp.innerHTML = html;
+                return temp.textContent || temp.innerText || "";
             };
 
-            // 切换收藏状态
+            const formatTime = (dateStr) => {
+                return dateStr.split(' ')[1]?.substring(0, 5) || '';
+            };
+
+            const isSpecialInterest = (title) => whiteList.some(k => title.includes(k));
+            const isFavorited = (item) => favorites.value.some(f => f.title === item.title);
+            
             const toggleFav = (item) => {
                 if (isFavorited(item)) {
-                    // 取消收藏
-                    favorites.value = favorites.value.filter(fav => fav.title !== item.title);
+                    favorites.value = favorites.value.filter(f => f.title !== item.title);
                 } else {
-                    // 添加收藏
-                    favorites.value.unshift(item); // 加到最前面
+                    favorites.value.unshift(item);
                 }
-                // 保存到浏览器
                 localStorage.setItem('mybuzz_favs', JSON.stringify(favorites.value));
             };
 
-            // 计算当前显示的列表
             const displayList = computed(() => {
                 if (currentTab.value === 'domestic') return domesticNews.value;
                 if (currentTab.value === 'world') return worldNews.value;
-                if (currentTab.value === 'fav') return favorites.value;
-                return [];
+                return favorites.value;
             });
 
-            return {
-                currentTab,
-                domesticNews,
-                worldNews,
-                favorites,
-                displayList,
-                toggleFav,
-                isFavorited,
-                isSpecialInterest
-            };
+            return { currentTab, favorites, displayList, toggleFav, isFavorited, isSpecialInterest, switchTab, loading, cleanSummary, formatTime };
         }
     }).mount('#app');
 </script>
-
 </body>
 </html>
