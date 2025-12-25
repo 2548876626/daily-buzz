@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
     
-    <title>Buzz 3.0</title>
+    <title>Buzz Daily</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     
     <style>
@@ -16,7 +16,7 @@
         body { background-color: var(--bg-color); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         .top-bar { position: sticky; top: 0; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px); padding: 45px 20px 15px 20px; z-index: 50; border-bottom: 0.5px solid var(--separator); display: flex; justify-content: space-between; align-items: flex-end; }
-        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; } /* 稍微调小一点字体以防太挤 */
+        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         .app-date { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .content-area { padding: 0 20px 100px 20px; min-height: 100vh; }
@@ -39,12 +39,13 @@
         
         .source-tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-right: 8px; letter-spacing: 0.5px; }
         .tag-tech { background: rgba(255, 149, 0, 0.2); color: #ff9500; } 
+        .tag-world { background: rgba(255, 59, 48, 0.2); color: #ff453a; } 
         .tag-weibo { background: rgba(255, 59, 48, 0.2); color: #ff453a; } 
-        .tag-world { background: rgba(10, 132, 255, 0.2); color: #0a84ff; } /* World Blue */
+        .tag-brief { background: rgba(48, 209, 88, 0.2); color: #30d158; } /* Green for Brief */
         
         .loading { text-align: center; color: var(--text-secondary); margin-top: 60px; font-size: 15px; font-weight: 500; }
         
-        /* 底部导航改为容纳4个 */
+        /* 底部导航适配 4 个按钮 */
         .bottom-nav { position: fixed; bottom: 30px; left: 16px; right: 16px; height: 68px; background-color: rgba(28, 28, 30, 0.9); backdrop-filter: blur(25px); border-radius: 34px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 100; border: 0.5px solid rgba(255,255,255,0.1); }
         .nav-item { background: none; border: none; color: var(--text-secondary); font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 25%; font-weight: 500; }
         .nav-item.active { color: #fff; transform: translateY(-2px); transition: all 0.2s; }
@@ -76,6 +77,7 @@
                     <span v-if="currentTab === 'tech'" class="source-tag tag-tech">Tech</span>
                     <span v-if="currentTab === 'world'" class="source-tag tag-world">World</span>
                     <span v-if="currentTab === 'weibo'" class="source-tag tag-weibo">Hot</span>
+                    <span v-if="currentTab === 'brief'" class="source-tag tag-brief">Brief</span>
                     {{ item.hot }}
                 </span>
                 <button @click="toggleFav(item)" style="background:none;border:none;color:#636366;font-size:18px;">
@@ -95,8 +97,8 @@
         <button class="nav-item" :class="{ active: currentTab === 'weibo' }" @click="switchTab('weibo')">
             <span class="nav-icon">🔥</span><span>Weibo</span>
         </button>
-        <button class="nav-item" :class="{ active: currentTab === 'fav' }" @click="switchTab('fav')">
-            <span class="nav-icon">⭐️</span><span>Favs</span>
+        <button class="nav-item" :class="{ active: currentTab === 'brief' }" @click="switchTab('brief')">
+            <span class="nav-icon">☕️</span><span>Brief</span>
         </button>
     </div>
 </div>
@@ -106,17 +108,17 @@
 
     createApp({
         setup() {
-            // ⚠️ 确认链接
             const WORKER_URL = 'https://daily-buzz-api.jacket1763.workers.dev'; 
 
-            const currentTab = ref('tech');
+            const currentTab = ref('brief'); // 默认改成看简报，因为这个最实用
             const favorites = ref([]);
             
-            // 数据缓存池
+            // 数据池
             const newsData = ref({
                 tech: [],
                 world: [],
-                weibo: []
+                weibo: [],
+                brief: []
             });
 
             const loading = ref(false);
@@ -125,8 +127,9 @@
 
             const pageTitle = computed(() => {
                 if(currentTab.value === 'tech') return 'Hacker News';
-                if(currentTab.value === 'world') return 'World News';
+                if(currentTab.value === 'world') return 'Global News';
                 if(currentTab.value === 'weibo') return 'Weibo Hot';
+                if(currentTab.value === 'brief') return 'Daily Brief';
                 return 'Favorites';
             });
 
@@ -153,6 +156,7 @@
 
             const switchTab = (tab) => {
                 currentTab.value = tab;
+                // 如果这个板块没数据，才去加载
                 if (tab !== 'fav' && newsData.value[tab].length === 0) {
                     fetchData(tab);
                 }
@@ -161,7 +165,7 @@
             onMounted(() => {
                 const saved = localStorage.getItem('mybuzz_favs');
                 if (saved) favorites.value = JSON.parse(saved);
-                fetchData('tech'); 
+                fetchData('brief'); // 启动时默认加载简报
             });
 
             const getRankClass = (i) => i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
@@ -183,4 +187,4 @@
     }).mount('#app');
 </script>
 </body>
-</html>    
+</html>
