@@ -8,16 +8,19 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
     
-    <title>Buzz V5</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <title>Buzz热搜</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    
     <style>
         :root { --bg-color: #000000; --text-primary: #ffffff; --text-secondary: #8e8e93; --accent-color: #0a84ff; --separator: #38383a; --zhihu-color: #0084ff; --weibo-color: #ff3b30; }
         body { background-color: var(--bg-color); color: var(--text-primary); font-family: -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
+        /* 顶部导航 */
         .top-bar { position: sticky; top: 0; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px); padding: 45px 16px 10px 16px; z-index: 50; border-bottom: 0.5px solid var(--separator); display: flex; justify-content: space-between; align-items: flex-end; }
         .app-title { font-size: 30px; font-weight: 800; letter-spacing: -1px; }
         .app-date { font-size: 13px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; text-transform: uppercase; }
 
+        /* 内容区 */
         .content-area { padding: 0 16px 100px 16px; min-height: 100vh; }
         .news-item { padding: 18px 0; border-bottom: 0.5px solid var(--separator); display: flex; flex-direction: column; gap: 8px; }
         .news-title { font-size: 17px; font-weight: 600; line-height: 1.5; color: var(--text-primary); text-decoration: none; }
@@ -26,7 +29,6 @@
         .rank-tag { font-weight: 800; font-size: 14px; margin-right: 10px; font-style: italic; display: inline-block; width: 20px; }
         .rank-1 { color: #ff3b30; } .rank-2 { color: #ff9500; } .rank-3 { color: #ffcc00; } 
         
-        /* 来源标签 */
         .source-tag { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 6px; }
         .tag-weibo { background: rgba(255, 59, 48, 0.2); color: #ff453a; }
         .tag-zhihu { background: rgba(10, 132, 255, 0.2); color: #0a84ff; }
@@ -34,7 +36,8 @@
         .highlight { color: var(--accent-color); }
         .loading { text-align: center; color: var(--text-secondary); margin-top: 60px; font-size: 14px; }
         
-        .bottom-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; height: 64px; background-color: rgba(28, 28, 30, 0.8); backdrop-filter: blur(25px); border-radius: 32px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; border: 0.5px solid rgba(255,255,255,0.1); }
+        /* 底部按钮 */
+        .bottom-nav { position: fixed; bottom: 30px; left: 20px; right: 20px; height: 64px; background-color: rgba(28, 28, 30, 0.9); backdrop-filter: blur(25px); border-radius: 32px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; border: 0.5px solid rgba(255,255,255,0.1); }
         .nav-item { background: none; border: none; color: var(--text-secondary); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 50px; }
         .nav-item.active { color: #fff; transform: scale(1.1); transition: all 0.2s; }
         .nav-icon { font-size: 22px; }
@@ -49,8 +52,11 @@
     </div>
 
     <div class="content-area">
-        <div v-if="loading" class="loading">正在连接云端获取 {{ pageTitle }}...</div>
-        <div v-if="errorMsg" class="loading" style="color: #ff453a;">{{ errorMsg }}</div>
+        <div v-if="loading" class="loading">正在从云端获取 {{ pageTitle }}...</div>
+        
+        <div v-if="errorMsg" class="loading" style="color: #ff453a;">
+            ⚠️ {{ errorMsg }}
+        </div>
 
         <div v-for="(item, index) in displayList" :key="index" class="news-item">
             <div style="display: flex; align-items: start;">
@@ -62,7 +68,7 @@
             <div class="news-meta">
                 <span>
                     <span v-if="currentTab === 'weibo'" class="source-tag tag-weibo">微博</span>
-                    <span v-if="currentTab === 'zhihu'" class="source-tag tag-zhihu">知乎</span>
+                    <span v-if="currentTab === 'zhihu'" class="source-tag tag-zhihu">日报</span>
                     {{ item.hot }}
                 </span>
                 <button @click="toggleFav(item)" style="background:none;border:none;color:#636366;font-size:18px;">
@@ -90,7 +96,7 @@
 
     createApp({
         setup() {
-            // ⚠️⚠️⚠️ 记得确认这里的链接是对的
+            // ⚠️⚠️⚠️ 这里一定要填对你的 Worker 链接 ⚠️⚠️⚠️
             const WORKER_URL = 'https://daily-buzz-api.jacket1763.workers.dev'; 
 
             const currentTab = ref('weibo');
@@ -103,7 +109,7 @@
 
             const pageTitle = computed(() => {
                 if(currentTab.value === 'weibo') return 'Weibo Hot';
-                if(currentTab.value === 'zhihu') return 'Zhihu Top';
+                if(currentTab.value === 'zhihu') return 'Zhihu Daily';
                 return 'Favorites';
             });
 
@@ -114,20 +120,25 @@
                 try {
                     // 请求 Worker，带上参数 ?type=weibo 或 ?type=zhihu
                     const res = await fetch(`${WORKER_URL}?type=${type}`);
+                    
+                    // 先判断网络状态
+                    if (!res.ok) throw new Error(`连接失败 (${res.status})`);
+                    
                     const json = await res.json();
                     
                     if (json.success) {
                         const items = json.data;
-                        // 过滤逻辑
                         const filtered = filterNews(items);
                         
                         if (type === 'weibo') weiboData.value = filtered;
                         if (type === 'zhihu') zhihuData.value = filtered;
                     } else {
-                        throw new Error(json.error || 'API Error');
+                        // 如果后端返回了错误信息
+                        throw new Error(json.error || '数据格式错误');
                     }
                 } catch (e) {
-                    errorMsg.value = "加载失败: " + e.message;
+                    console.error(e);
+                    errorMsg.value = e.message;
                 } finally {
                     loading.value = false;
                 }
@@ -136,6 +147,7 @@
             const filterNews = (items) => {
                 const black = ['绯闻', '恋情', '粉丝', '应援', '路透', '穿搭'];
                 const white = ['花样滑冰', '羽生', '冰演', '冬奥'];
+                if(!items) return [];
                 return items.filter(i => {
                     if (white.some(k => i.title.includes(k))) return true;
                     if (black.some(k => i.title.includes(k))) return false;
