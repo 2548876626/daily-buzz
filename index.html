@@ -3,35 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Buzz V3.2</title>
+    <title>Buzz Final</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        /* --- 样式保持 V3 不变，稳定耐看 --- */
-        :root { --bg-color: #000000; --text-primary: #ffffff; --text-secondary: #8e8e93; --accent-color: #0a84ff; --separator: #38383a; --bottom-nav-height: 80px; }
+        /* --- 样式区 (保持不变，最稳的深色风) --- */
+        :root { --bg-color: #000000; --text-primary: #ffffff; --text-secondary: #8e8e93; --accent-color: #0a84ff; --separator: #38383a; }
         body { background-color: var(--bg-color); color: var(--text-primary); font-family: -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
         .top-bar { position: sticky; top: 0; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(20px); padding: 15px 16px; z-index: 50; border-bottom: 0.5px solid var(--separator); display: flex; justify-content: space-between; align-items: baseline; }
         .app-title { font-size: 28px; font-weight: 700; }
         .app-date { font-size: 14px; color: var(--text-secondary); }
-
-        .content-area { padding: 10px 16px; padding-bottom: calc(var(--bottom-nav-height) + 20px); min-height: 100vh; }
+        .content-area { padding: 10px 16px; padding-bottom: 100px; min-height: 100vh; }
         .news-item { padding: 16px 0; border-bottom: 0.5px solid var(--separator); display: flex; flex-direction: column; gap: 6px; }
         .news-title { font-size: 17px; font-weight: 600; line-height: 1.4; color: var(--text-primary); text-decoration: none; }
-        .news-summary { font-size: 14px; color: var(--text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .news-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: #636366; }
-        
         .rank-num { font-weight: 900; margin-right: 8px; font-style: italic; }
         .rank-1 { color: #ff3b30; } .rank-2 { color: #ff9500; } .rank-3 { color: #ffcc00; } .rank-other { color: var(--text-secondary); }
         .highlight { color: var(--accent-color); }
         .hot-tag { background: #3a3a3c; padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #fff; margin-right: 6px; }
-
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background-color: rgba(28, 28, 30, 0.95); backdrop-filter: blur(20px); border-top: 0.5px solid var(--separator); display: flex; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); z-index: 100; }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; height: 100%; color: var(--text-secondary); font-size: 10px; gap: 4px; background: none; border: none; }
         .nav-item.active { color: var(--accent-color); }
-        .nav-icon { font-size: 20px; }
-        .fav-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; padding: 5px; }
-        .fav-btn.is-fav { color: #ffcc00; }
-        
         .status-msg { text-align: center; color: var(--text-secondary); margin-top: 50px; font-size: 14px; }
     </style>
 </head>
@@ -44,7 +35,8 @@
     </div>
 
     <div class="content-area">
-        <div v-if="loading" class="status-msg">正在获取最新榜单...</div>
+        <div v-if="loading" class="status-msg">正在从云端获取热搜...</div>
+        <div v-if="errorMsg" class="status-msg" style="color: #ff453a;">{{ errorMsg }}</div>
 
         <div v-for="(item, index) in displayList" :key="index" class="news-item">
             <div>
@@ -53,15 +45,9 @@
                     {{ item.title }}
                 </a>
             </div>
-            
-            <div class="news-summary" v-if="item.desc">{{ cleanSummary(item.desc) }}</div>
-            
             <div class="news-meta">
-                <span>
-                    <span v-if="item.hot" class="hot-tag">🔥 {{ item.hot }}</span>
-                    {{ item.source }}
-                </span>
-                <button class="fav-btn" :class="{ 'is-fav': isFavorited(item) }" @click="toggleFav(item)">
+                <span><span v-if="item.hot" class="hot-tag">🔥 {{ item.hot }}</span>{{ item.source }}</span>
+                <button @click="toggleFav(item)" style="background:none;border:none;color:#8e8e93;font-size:16px;">
                     {{ isFavorited(item) ? '★' : '☆' }}
                 </button>
             </div>
@@ -69,15 +55,9 @@
     </div>
 
     <div class="bottom-nav">
-        <button class="nav-item" :class="{ active: currentTab === 'domestic' }" @click="switchTab('domestic')">
-            <span class="nav-icon">🔥</span><span>国内</span>
-        </button>
-        <button class="nav-item" :class="{ active: currentTab === 'world' }" @click="switchTab('world')">
-            <span class="nav-icon">🌍</span><span>国际</span>
-        </button>
-        <button class="nav-item" :class="{ active: currentTab === 'fav' }" @click="currentTab = 'fav'">
-            <span class="nav-icon">⭐️</span><span>收藏</span>
-        </button>
+        <button class="nav-item" :class="{ active: currentTab === 'domestic' }" @click="currentTab = 'domestic'"><span>🔥 国内</span></button>
+        <button class="nav-item" :class="{ active: currentTab === 'world' }" @click="currentTab = 'world'"><span>🌍 国际</span></button>
+        <button class="nav-item" :class="{ active: currentTab === 'fav' }" @click="currentTab = 'fav'"><span>⭐️ 收藏</span></button>
     </div>
 </div>
 
@@ -86,143 +66,96 @@
 
     createApp({
         setup() {
+            // ⚠️⚠️⚠️ 重点：请把下面这行引号里的内容，换成你在 第三步 拿到的那个链接！⚠️⚠️⚠️
+            const MY_WORKER_URL = 'https://daily-buzz-api.jacket1763.workers.dev'; 
+
             const currentTab = ref('domestic');
             const favorites = ref([]);
             const domesticNews = ref([]);
             const worldNews = ref([]);
             const loading = ref(false);
-            const currentDate = ref('');
+            const errorMsg = ref('');
+            const currentDate = ref(new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }));
 
-            // API 配置
-            // 使用韩小韩/Tenapi 等公共 API，它们直接返回 JSON，比 RSS 稳定得多
-            const WEIBO_API = 'https://api.vvhan.com/api/hotlist?type=weiboHot';
-            // 备用 API (如果上面那个挂了)
-            const WEIBO_API_BACKUP = 'https://tenapi.cn/v2/weibohot';
-
-            const updateDate = () => {
-                const now = new Date();
-                currentDate.value = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
-            };
-
-            // --- 专门获取微博热搜 (JSON API 模式) ---
+            // 1. 获取微博热搜 (通过你的 Worker)
             const fetchWeibo = async () => {
                 loading.value = true;
+                errorMsg.value = '';
                 try {
-                    // 尝试主接口
-                    const res = await fetch(WEIBO_API);
-                    const data = await res.json();
+                    // 如果你忘了改上面的 URL，这里会提醒你
+                    if (MY_WORKER_URL.includes('你的名字')) {
+                        throw new Error("请在代码中填入正确的 Worker 链接！");
+                    }
                     
-                    if (data.success && data.data) {
-                        const items = data.data.map(item => ({
+                    const res = await fetch(MY_WORKER_URL);
+                    const json = await res.json();
+                    
+                    if (json.data) {
+                        const items = json.data.map(item => ({
                             title: item.title,
-                            link: item.url, // 手机端链接
-                            hot: item.hot,  // 热度值
-                            source: '微博'
+                            link: item.url,
+                            hot: item.hot,
+                            source: '微博热搜'
                         }));
                         domesticNews.value = filterNews(items);
                     } else {
-                        throw new Error('主接口数据异常');
+                        throw new Error('Worker 返回了空数据');
                     }
                 } catch (e) {
-                    console.log('主接口失败，尝试备用接口...');
-                    try {
-                        // 尝试备用接口 (以防万一)
-                        const res2 = await fetch(WEIBO_API_BACKUP);
-                        const data2 = await res2.json();
-                        if (data2.data) {
-                            const items = data2.data.map(item => ({
-                                title: item.name,
-                                link: item.url,
-                                hot: item.hot,
-                                source: '微博(备用)'
-                            }));
-                            domesticNews.value = filterNews(items);
-                        }
-                    } catch (err2) {
-                        console.error('所有接口都失败了', err2);
-                        // 最后的最后，如果都挂了，显示 36Kr 保底
-                        fetchRSS('https://36kr.com/feed', domesticNews, '36氪(保底)');
-                    }
+                    console.error(e);
+                    errorMsg.value = "加载失败: " + e.message;
                 } finally {
                     loading.value = false;
                 }
             };
 
-            // --- 获取 RSS (用于国际新闻) ---
-            const fetchRSS = async (rssUrl, targetRef, sourceName) => {
+            // 2. 获取国际新闻 (保持原样)
+            const fetchWorld = async () => {
                 try {
-                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-                    const res = await fetch(apiUrl);
+                    const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://www.zaobao.com.sg/rss/world.xml');
                     const data = await res.json();
-                    if (data.status === 'ok') {
+                    if (data.items) {
                         const items = data.items.map(item => ({
-                            title: item.title,
-                            link: item.link,
-                            desc: item.description,
-                            source: sourceName
+                            title: item.title, link: item.link, source: '联合早报'
                         }));
-                        targetRef.value = filterNews(items);
+                        worldNews.value = filterNews(items);
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) {}
             };
 
-            const blackList = ['绯闻', '恋情', '出轨', '粉丝', '应援', '路透', '穿搭', '工作室'];
-            const whiteList = ['花样滑冰', '羽生', '冰演', '冬奥', '金博洋'];
-
             const filterNews = (items) => {
-                return items.filter(item => {
-                    const t = item.title;
-                    if (whiteList.some(k => t.includes(k))) return true;
-                    if (blackList.some(k => t.includes(k))) return false;
+                const black = ['绯闻', '恋情', '粉丝', '应援', '路透', '穿搭'];
+                const white = ['花样滑冰', '羽生', '冰演', '冬奥'];
+                return items.filter(i => {
+                    if (white.some(k => i.title.includes(k))) return true;
+                    if (black.some(k => i.title.includes(k))) return false;
                     return true;
                 });
             };
 
             onMounted(() => {
-                updateDate();
                 const saved = localStorage.getItem('mybuzz_favs');
                 if (saved) favorites.value = JSON.parse(saved);
-                
-                // 1. 获取微博 (新方法)
                 fetchWeibo();
-                
-                // 2. 获取国际 (旧方法，如果早报挂了可以用 FT中文网)
-                fetchRSS('https://www.zaobao.com.sg/rss/world.xml', worldNews, '联合早报');
+                fetchWorld();
             });
 
-            const switchTab = (tab) => currentTab.value = tab;
-            
-            const cleanSummary = (html) => {
-                if(!html) return '';
-                let temp = document.createElement("div");
-                temp.innerHTML = html;
-                return temp.textContent || "";
-            };
-
-            const getRankClass = (index) => {
-                if (index === 0) return 'rank-1';
-                if (index === 1) return 'rank-2';
-                if (index === 2) return 'rank-3';
-                return 'rank-other';
-            };
-
-            const isSpecialInterest = (title) => whiteList.some(k => title.includes(k));
-            const isFavorited = (item) => favorites.value.some(f => f.title === item.title);
-            const toggleFav = (item) => {
-                if (isFavorited(item)) {
-                    favorites.value = favorites.value.filter(f => f.title !== item.title);
-                } else {
-                    favorites.value.unshift(item);
-                }
+            // 辅助函数
+            const getRankClass = (i) => i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
+            const isSpecialInterest = (t) => ['花样滑冰', '羽生'].some(k => t.includes(k));
+            const isFavorited = (i) => favorites.value.some(f => f.title === i.title);
+            const toggleFav = (i) => {
+                if(isFavorited(i)) favorites.value = favorites.value.filter(f=>f.title!==i.title);
+                else favorites.value.unshift(i);
                 localStorage.setItem('mybuzz_favs', JSON.stringify(favorites.value));
             };
             const displayList = computed(() => {
-                if (currentTab.value === 'domestic') return domesticNews.value;
-                if (currentTab.value === 'world') return worldNews.value;
+                if(currentTab.value === 'domestic') return domesticNews.value;
+                if(currentTab.value === 'world') return worldNews.value;
                 return favorites.value;
             });
 
-            return { currentTab, favorites, displayList, toggleFav, isFavorited, isSpecialInterest, switchTab, loading, cleanSummary, currentDate, getRankClass };
+            return { currentTab, favorites, displayList, toggleFav, isFavorited, isSpecialInterest, loading, errorMsg, currentDate, getRankClass };
         }
     }).mount('#app');
 </script>
