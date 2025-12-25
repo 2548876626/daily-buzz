@@ -2,63 +2,152 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Buzz 2.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Buzz V3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        /* --- 保持 Apple 备忘录深色风格不变 --- */
+        /* --- 基础变量 --- */
         :root {
             --bg-color: #000000;
             --text-primary: #ffffff;
             --text-secondary: #8e8e93;
             --accent-color: #0a84ff; 
             --separator: #38383a;
+            --bottom-nav-height: 80px; /* 底部导航高度 */
         }
-        body { background-color: var(--bg-color); color: var(--text-primary); font-family: -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
-        .header { position: sticky; top: 0; background-color: rgba(28, 28, 30, 0.95); backdrop-filter: blur(20px); padding: 15px 10px; display: flex; justify-content: center; gap: 15px; z-index: 100; border-bottom: 0.5px solid var(--separator); }
-        .tab-btn { background: none; border: none; color: var(--text-secondary); font-size: 15px; font-weight: 600; padding: 6px 14px; border-radius: 18px; transition: all 0.3s; }
-        .tab-btn.active { color: var(--text-primary); background-color: #3a3a3c; }
-        
-        .content-area { padding: 0 16px 80px 16px; }
+
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-primary); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* 顶部标题栏 (新增) */
+        .top-bar {
+            position: sticky;
+            top: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 15px 16px;
+            z-index: 50;
+            border-bottom: 0.5px solid var(--separator);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .app-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+        .app-date { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+
+        /* 底部导航栏 (核心改动) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: rgba(28, 28, 30, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 0.5px solid var(--separator);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: env(safe-area-inset-bottom); /* 适配全面屏底部 */
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            height: 100%;
+            color: var(--text-secondary);
+            font-size: 10px;
+            gap: 4px;
+            background: none;
+            border: none;
+        }
+
+        .nav-item.active { color: var(--accent-color); }
+        .nav-icon { font-size: 20px; font-weight: bold; }
+
+        /* 内容区域 */
+        .content-area {
+            padding: 10px 16px;
+            padding-bottom: calc(var(--bottom-nav-height) + 20px); /* 防止被底部遮挡 */
+            min-height: 100vh;
+        }
+
         .news-item { padding: 16px 0; border-bottom: 0.5px solid var(--separator); display: flex; flex-direction: column; gap: 6px; }
+        
+        /* 微博热搜要有序号 */
+        .rank-num { font-weight: 900; margin-right: 8px; font-style: italic; }
+        .rank-1 { color: #ff3b30; } /* 红色 */
+        .rank-2 { color: #ff9500; } /* 橙色 */
+        .rank-3 { color: #ffcc00; } /* 黄色 */
+        .rank-other { color: var(--text-secondary); }
+
         .news-title { font-size: 17px; font-weight: 600; line-height: 1.4; color: var(--text-primary); text-decoration: none; }
         .news-summary { font-size: 14px; color: var(--text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .news-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: #636366; }
-        .fav-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; }
+        
+        .fav-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; padding: 5px; }
         .fav-btn.is-fav { color: #ffcc00; }
         .highlight { color: var(--accent-color); }
-        .loading { text-align: center; color: var(--text-secondary); margin-top: 30px; font-size: 14px; }
+        .loading { text-align: center; color: var(--text-secondary); margin-top: 50px; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div id="app">
-    <div class="header">
-        <button class="tab-btn" :class="{ active: currentTab === 'domestic' }" @click="switchTab('domestic')">国内资讯</button>
-        <button class="tab-btn" :class="{ active: currentTab === 'world' }" @click="switchTab('world')">全球大事</button>
-        <button class="tab-btn" :class="{ active: currentTab === 'fav' }" @click="currentTab = 'fav'">收藏夹</button>
+    <div class="top-bar">
+        <div class="app-title">Buzz</div>
+        <div class="app-date">{{ currentDate }}</div>
     </div>
 
     <div class="content-area">
-        <div v-if="loading" class="loading">正在获取最新热点...</div>
-
+        <div v-if="loading" class="loading">正在加载最新热点...</div>
+        
         <div v-if="currentTab === 'fav' && favorites.length === 0" class="loading">
-            暂无收藏，去发现点什么吧
+            暂无收藏内容
         </div>
 
         <div v-for="(item, index) in displayList" :key="index" class="news-item">
-            <a :href="item.link" target="_blank" class="news-title" :class="{ 'highlight': isSpecialInterest(item.title) }">
-                {{ item.title }}
-            </a>
+            <div>
+                <span v-if="currentTab === 'domestic'" class="rank-num" :class="getRankClass(index)">{{ index + 1 }}</span>
+                <a :href="item.link" target="_blank" class="news-title" :class="{ 'highlight': isSpecialInterest(item.title) }">
+                    {{ item.title }}
+                </a>
+            </div>
+            
             <div class="news-summary" v-if="item.desc">{{ cleanSummary(item.desc) }}</div>
+            
             <div class="news-meta">
-                <span>{{ item.source }} | {{ formatTime(item.pubDate) }}</span>
+                <span>{{ item.source }}</span>
                 <button class="fav-btn" :class="{ 'is-fav': isFavorited(item) }" @click="toggleFav(item)">
                     {{ isFavorited(item) ? '★' : '☆' }}
                 </button>
             </div>
         </div>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-item" :class="{ active: currentTab === 'domestic' }" @click="switchTab('domestic')">
+            <span class="nav-icon">🔥</span>
+            <span>国内</span>
+        </button>
+        <button class="nav-item" :class="{ active: currentTab === 'world' }" @click="switchTab('world')">
+            <span class="nav-icon">🌍</span>
+            <span>国际</span>
+        </button>
+        <button class="nav-item" :class="{ active: currentTab === 'fav' }" @click="currentTab = 'fav'">
+            <span class="nav-icon">⭐️</span>
+            <span>收藏</span>
+        </button>
     </div>
 </div>
 
@@ -72,23 +161,28 @@
             const domesticNews = ref([]);
             const worldNews = ref([]);
             const loading = ref(false);
+            const currentDate = ref('');
 
-            // ⚠️ 核心：这里是获取真实数据的逻辑
-            // 使用 rss2json 服务把 RSS 转换成 JSON
+            // 获取今天的日期
+            const updateDate = () => {
+                const now = new Date();
+                const options = { month: 'long', day: 'numeric', weekday: 'short' };
+                currentDate.value = now.toLocaleDateString('zh-CN', options);
+            };
+
             const fetchRSS = async (rssUrl, targetRef, sourceName) => {
                 try {
                     loading.value = true;
+                    // 使用 rss2json 服务
                     const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
                     const res = await fetch(apiUrl);
                     const data = await res.json();
                     
                     if (data.status === 'ok') {
-                        // 拿到数据后，进行“清洗”和“过滤”
                         const rawItems = data.items.map(item => ({
                             title: item.title,
                             link: item.link,
-                            desc: item.description,
-                            pubDate: item.pubDate,
+                            desc: item.description, // 微博热搜这里可能为空
                             source: sourceName
                         }));
                         targetRef.value = filterNews(rawItems);
@@ -100,31 +194,28 @@
                 }
             };
 
-            // 🚫 黑名单：即使是热点，有这些词也不看
-            const blackList = ['绯闻', '恋情', '出轨', '粉丝', '应援', '剧透', '生图', '路透', '穿搭'];
-            // ✅ 白名单：即便触发黑名单，也要强制看
+            // ⚠️ 过滤词库
+            const blackList = ['绯闻', '恋情', '出轨', '粉丝', '应援', '路透', '穿搭', '工作室'];
             const whiteList = ['花样滑冰', '羽生', '冰演', '冬奥', '金博洋'];
 
-            // 过滤逻辑
             const filterNews = (items) => {
                 return items.filter(item => {
                     const t = item.title;
-                    // 如果中白名单，直接通过
                     if (whiteList.some(k => t.includes(k))) return true;
-                    // 如果中黑名单，过滤掉
                     if (blackList.some(k => t.includes(k))) return false;
                     return true;
                 });
             };
 
-            // 初始加载
             onMounted(() => {
+                updateDate();
                 const saved = localStorage.getItem('mybuzz_favs');
                 if (saved) favorites.value = JSON.parse(saved);
                 
-                // 加载国内 (暂用 36Kr)
-                fetchRSS('https://36kr.com/feed', domesticNews, '36氪');
-                // 加载国际 (联合早报)
+                // 1. 微博热搜 (通过 RSSHub)
+                fetchRSS('https://rsshub.app/weibo/search/hot', domesticNews, '微博热搜');
+                
+                // 2. 国际新闻 (联合早报)
                 fetchRSS('https://www.zaobao.com.sg/rss/world.xml', worldNews, '联合早报');
             });
 
@@ -132,16 +223,18 @@
                 currentTab.value = tab;
             };
 
-            // 工具：去除摘要里的 HTML 标签
             const cleanSummary = (html) => {
                 if(!html) return '';
                 let temp = document.createElement("div");
                 temp.innerHTML = html;
-                return temp.textContent || temp.innerText || "";
+                return temp.textContent || "";
             };
 
-            const formatTime = (dateStr) => {
-                return dateStr.split(' ')[1]?.substring(0, 5) || '';
+            const getRankClass = (index) => {
+                if (index === 0) return 'rank-1';
+                if (index === 1) return 'rank-2';
+                if (index === 2) return 'rank-3';
+                return 'rank-other';
             };
 
             const isSpecialInterest = (title) => whiteList.some(k => title.includes(k));
@@ -162,7 +255,7 @@
                 return favorites.value;
             });
 
-            return { currentTab, favorites, displayList, toggleFav, isFavorited, isSpecialInterest, switchTab, loading, cleanSummary, formatTime };
+            return { currentTab, favorites, displayList, toggleFav, isFavorited, isSpecialInterest, switchTab, loading, cleanSummary, currentDate, getRankClass };
         }
     }).mount('#app');
 </script>
