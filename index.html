@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
     
-    <title>Buzz Mix</title>
+    <title>Buzz 3.0</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     
     <style>
@@ -16,7 +16,7 @@
         body { background-color: var(--bg-color); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         .top-bar { position: sticky; top: 0; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px); padding: 45px 20px 15px 20px; z-index: 50; border-bottom: 0.5px solid var(--separator); display: flex; justify-content: space-between; align-items: flex-end; }
-        .app-title { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; } /* 稍微调小一点字体以防太挤 */
         .app-date { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .content-area { padding: 0 20px 100px 20px; min-height: 100vh; }
@@ -38,15 +38,17 @@
         .rank-1 { color: #ff3b30; } .rank-2 { color: #ff9500; } .rank-3 { color: #ffcc00; } 
         
         .source-tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-right: 8px; letter-spacing: 0.5px; }
-        .tag-tech { background: rgba(255, 149, 0, 0.2); color: #ff9500; } /* Tech Orange */
-        .tag-weibo { background: rgba(255, 59, 48, 0.2); color: #ff453a; } /* Weibo Red */
+        .tag-tech { background: rgba(255, 149, 0, 0.2); color: #ff9500; } 
+        .tag-weibo { background: rgba(255, 59, 48, 0.2); color: #ff453a; } 
+        .tag-world { background: rgba(10, 132, 255, 0.2); color: #0a84ff; } /* World Blue */
         
         .loading { text-align: center; color: var(--text-secondary); margin-top: 60px; font-size: 15px; font-weight: 500; }
         
-        .bottom-nav { position: fixed; bottom: 30px; left: 24px; right: 24px; height: 68px; background-color: rgba(28, 28, 30, 0.9); backdrop-filter: blur(25px); border-radius: 34px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 100; border: 0.5px solid rgba(255,255,255,0.1); }
-        .nav-item { background: none; border: none; color: var(--text-secondary); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 60px; font-weight: 500; }
+        /* 底部导航改为容纳4个 */
+        .bottom-nav { position: fixed; bottom: 30px; left: 16px; right: 16px; height: 68px; background-color: rgba(28, 28, 30, 0.9); backdrop-filter: blur(25px); border-radius: 34px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 100; border: 0.5px solid rgba(255,255,255,0.1); }
+        .nav-item { background: none; border: none; color: var(--text-secondary); font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 25%; font-weight: 500; }
         .nav-item.active { color: #fff; transform: translateY(-2px); transition: all 0.2s; }
-        .nav-icon { font-size: 24px; }
+        .nav-icon { font-size: 22px; }
     </style>
 </head>
 <body>
@@ -72,6 +74,7 @@
             <div class="news-meta">
                 <span>
                     <span v-if="currentTab === 'tech'" class="source-tag tag-tech">Tech</span>
+                    <span v-if="currentTab === 'world'" class="source-tag tag-world">World</span>
                     <span v-if="currentTab === 'weibo'" class="source-tag tag-weibo">Hot</span>
                     {{ item.hot }}
                 </span>
@@ -85,6 +88,9 @@
     <div class="bottom-nav">
         <button class="nav-item" :class="{ active: currentTab === 'tech' }" @click="switchTab('tech')">
             <span class="nav-icon">💻</span><span>Tech</span>
+        </button>
+        <button class="nav-item" :class="{ active: currentTab === 'world' }" @click="switchTab('world')">
+            <span class="nav-icon">🌍</span><span>World</span>
         </button>
         <button class="nav-item" :class="{ active: currentTab === 'weibo' }" @click="switchTab('weibo')">
             <span class="nav-icon">🔥</span><span>Weibo</span>
@@ -100,19 +106,26 @@
 
     createApp({
         setup() {
-            // ⚠️ 记得检查链接 ⚠️
+            // ⚠️ 确认链接
             const WORKER_URL = 'https://daily-buzz-api.jacket1763.workers.dev'; 
 
             const currentTab = ref('tech');
             const favorites = ref([]);
-            const techData = ref([]);
-            const weiboData = ref([]);
+            
+            // 数据缓存池
+            const newsData = ref({
+                tech: [],
+                world: [],
+                weibo: []
+            });
+
             const loading = ref(false);
             const errorMsg = ref('');
             const currentDate = ref(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' }).toUpperCase());
 
             const pageTitle = computed(() => {
                 if(currentTab.value === 'tech') return 'Hacker News';
+                if(currentTab.value === 'world') return 'World News';
                 if(currentTab.value === 'weibo') return 'Weibo Hot';
                 return 'Favorites';
             });
@@ -127,9 +140,7 @@
                     const json = await res.json();
                     
                     if (json.success) {
-                        const items = json.data;
-                        if (type === 'tech') techData.value = items;
-                        if (type === 'weibo') weiboData.value = items;
+                        newsData.value[type] = json.data;
                     } else {
                         throw new Error(json.error || 'Data Error');
                     }
@@ -142,14 +153,15 @@
 
             const switchTab = (tab) => {
                 currentTab.value = tab;
-                if (tab === 'tech' && techData.value.length === 0) fetchData('tech');
-                if (tab === 'weibo' && weiboData.value.length === 0) fetchData('weibo');
+                if (tab !== 'fav' && newsData.value[tab].length === 0) {
+                    fetchData(tab);
+                }
             };
 
             onMounted(() => {
                 const saved = localStorage.getItem('mybuzz_favs');
                 if (saved) favorites.value = JSON.parse(saved);
-                fetchData('tech'); // 默认加载 Tech
+                fetchData('tech'); 
             });
 
             const getRankClass = (i) => i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
@@ -162,9 +174,8 @@
             };
 
             const displayList = computed(() => {
-                if(currentTab.value === 'tech') return techData.value;
-                if(currentTab.value === 'weibo') return weiboData.value;
-                return favorites.value;
+                if(currentTab.value === 'fav') return favorites.value;
+                return newsData.value[currentTab.value];
             });
 
             return { currentTab, pageTitle, displayList, toggleFav, isFavorited, switchTab, loading, errorMsg, currentDate, getRankClass };
@@ -172,4 +183,4 @@
     }).mount('#app');
 </script>
 </body>
-</html>
+</html>    
