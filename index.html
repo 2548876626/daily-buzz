@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
     
-    <title>Global Buzz</title>
+    <title>Buzz Mix</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     
     <style>
@@ -20,26 +20,26 @@
         .app-date { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .content-area { padding: 0 20px 100px 20px; min-height: 100vh; }
-        .news-item { padding: 20px 0; border-bottom: 0.5px solid var(--separator); display: flex; flex-direction: column; gap: 8px; }
+        .news-item { padding: 18px 0; border-bottom: 0.5px solid var(--separator); display: flex; flex-direction: column; gap: 8px; }
         
         .news-title { 
             display: block; 
-            font-size: 18px; /* 英文可以稍微大一点 */
+            font-size: 17px; 
             font-weight: 600; 
-            line-height: 1.4; 
+            line-height: 1.45; 
             color: var(--text-primary); 
             text-decoration: none; 
         }
         .news-title:active { opacity: 0.7; }
 
-        .news-meta { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #636366; margin-top: 4px; }
+        .news-meta { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #636366; margin-top: 2px; }
         
         .rank-tag { font-weight: 700; font-size: 14px; margin-right: 12px; color: var(--text-secondary); display: inline-block; width: 20px; }
         .rank-1 { color: #ff3b30; } .rank-2 { color: #ff9500; } .rank-3 { color: #ffcc00; } 
         
         .source-tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-right: 8px; letter-spacing: 0.5px; }
-        .tag-tech { background: rgba(255, 149, 0, 0.2); color: #ff9500; } /* Hacker News Orange */
-        .tag-world { background: rgba(255, 59, 48, 0.2); color: #ff453a; } /* BBC Red */
+        .tag-tech { background: rgba(255, 149, 0, 0.2); color: #ff9500; } /* Tech Orange */
+        .tag-weibo { background: rgba(255, 59, 48, 0.2); color: #ff453a; } /* Weibo Red */
         
         .loading { text-align: center; color: var(--text-secondary); margin-top: 60px; font-size: 15px; font-weight: 500; }
         
@@ -71,8 +71,8 @@
             
             <div class="news-meta">
                 <span>
-                    <span v-if="currentTab === 'tech'" class="source-tag tag-tech">Hacker News</span>
-                    <span v-if="currentTab === 'world'" class="source-tag tag-world">BBC</span>
+                    <span v-if="currentTab === 'tech'" class="source-tag tag-tech">Tech</span>
+                    <span v-if="currentTab === 'weibo'" class="source-tag tag-weibo">Hot</span>
                     {{ item.hot }}
                 </span>
                 <button @click="toggleFav(item)" style="background:none;border:none;color:#636366;font-size:18px;">
@@ -86,11 +86,11 @@
         <button class="nav-item" :class="{ active: currentTab === 'tech' }" @click="switchTab('tech')">
             <span class="nav-icon">💻</span><span>Tech</span>
         </button>
-        <button class="nav-item" :class="{ active: currentTab === 'world' }" @click="switchTab('world')">
-            <span class="nav-icon">🌍</span><span>World</span>
+        <button class="nav-item" :class="{ active: currentTab === 'weibo' }" @click="switchTab('weibo')">
+            <span class="nav-icon">🔥</span><span>Weibo</span>
         </button>
         <button class="nav-item" :class="{ active: currentTab === 'fav' }" @click="switchTab('fav')">
-            <span class="nav-icon">⭐️</span><span>Saved</span>
+            <span class="nav-icon">⭐️</span><span>Favs</span>
         </button>
     </div>
 </div>
@@ -100,21 +100,21 @@
 
     createApp({
         setup() {
-            // ⚠️ 确认你的链接没变，还是那个 daily-buzz-api
+            // ⚠️ 记得检查链接 ⚠️
             const WORKER_URL = 'https://daily-buzz-api.jacket1763.workers.dev'; 
 
             const currentTab = ref('tech');
             const favorites = ref([]);
             const techData = ref([]);
-            const worldData = ref([]);
+            const weiboData = ref([]);
             const loading = ref(false);
             const errorMsg = ref('');
             const currentDate = ref(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' }).toUpperCase());
 
             const pageTitle = computed(() => {
-                if(currentTab.value === 'tech') return 'Tech Buzz';
-                if(currentTab.value === 'world') return 'World News';
-                return 'Saved';
+                if(currentTab.value === 'tech') return 'Hacker News';
+                if(currentTab.value === 'weibo') return 'Weibo Hot';
+                return 'Favorites';
             });
 
             const fetchData = async (type) => {
@@ -129,7 +129,7 @@
                     if (json.success) {
                         const items = json.data;
                         if (type === 'tech') techData.value = items;
-                        if (type === 'world') worldData.value = items;
+                        if (type === 'weibo') weiboData.value = items;
                     } else {
                         throw new Error(json.error || 'Data Error');
                     }
@@ -143,7 +143,7 @@
             const switchTab = (tab) => {
                 currentTab.value = tab;
                 if (tab === 'tech' && techData.value.length === 0) fetchData('tech');
-                if (tab === 'world' && worldData.value.length === 0) fetchData('world');
+                if (tab === 'weibo' && weiboData.value.length === 0) fetchData('weibo');
             };
 
             onMounted(() => {
@@ -163,7 +163,7 @@
 
             const displayList = computed(() => {
                 if(currentTab.value === 'tech') return techData.value;
-                if(currentTab.value === 'world') return worldData.value;
+                if(currentTab.value === 'weibo') return weiboData.value;
                 return favorites.value;
             });
 
